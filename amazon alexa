@@ -1,0 +1,129 @@
+import pandas as pd
+import seaborn as sns
+import nltk
+get_ipython().run_line_magic('matplotlib', 'inline')
+from matplotlib import style
+style.use('ggplot')
+import re
+from nltk.tokenize import word_tokenize
+from nltk.stem import PorterStemmer
+from nltk.corpus import stopwords
+
+from wordcloud import WordCloud
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.model_selection import train_test_split
+
+df = pd.read_csv('/content/amazon_alexa_data.csv')
+
+df.head()
+
+df.info()
+
+sns.countplot(x='rating', data=df)
+
+df['rating'].value_counts()
+
+fig = plt.figure(figsize=(7,7))
+tags = df['rating'].value_counts()
+tags.plot(kind='pie', autopct='%1.1f', label='')
+plt.title('Distribution of the different ratings')
+plt.show()
+
+fig = plt.figure(figsize=(7,7))
+tags = df['rating'].value_counts()
+tags.plot(kind='pie', autopct='%1.1f', label='')
+plt.title('Distribution of the different ratings')
+plt.show()
+
+fig = plt.figure(figsize=(10,10))
+colors = ("red", "yellow", "crimson", "blue", "darkgreen") 
+wp = {'linewidth':2, 'edgecolor':"black"} 
+data = df['rating'].value_counts()
+explode = (0.1,0.1,0.1, 0.1,0.1)
+classes = ['1','2','3','4','5']
+data.plot(kind='pie', autopct='%0.1f%%',labels=classes, startangle = 45, colors = colors,
+         explode = explode, shadow=True, wedgeprops = wp)
+plt.legend(title="species")
+plt.title("Distribution of the different ratings", loc='center', color='black', fontsize='25', fontweight='bold')
+plt.show()
+
+df['variation'].value_counts()
+
+sns.countplot(x='feedback', data=df)
+plt.show()
+
+fig = plt.figure(figsize=(7,7))
+tags = df['feedback'].value_counts()
+tags.plot(kind='pie', autopct="%1.1f%%", label='')
+plt.title("Distribution of the different sentiments")
+plt.show()
+
+for i in range(5):
+    print(df['verified_reviews'].iloc[i], "\n")
+    print(df['feedback'].iloc[i], "\n")
+
+def data_processing(text):
+    text = text.lower()
+    text = re.sub(r"https\S+|www\S+|http\S+", '', text, flags = re.MULTILINE)
+    text = re.sub(r'[^\w\s]','', text)
+    text_tokens = word_tokenize(text)
+    filtered_text = [w for w in text_tokens if not w in stop_words]
+    return " ".join(filtered_text)
+
+stemmer = PorterStemmer()
+def stemming(data):
+    text = [stemmer.stem(word) for word in data]
+    return data
+
+df['verified_reviews'] = df['verified_reviews'].apply(lambda x: stemming(x))
+
+for i in range(5):
+    print(df['verified_reviews'].iloc[i], "\n")
+    print(df['feedback'].iloc[i], "\n")
+
+pos_reviews= df[df.feedback==1]
+pos_reviews.head()
+
+text = ' '.join([word for word in pos_reviews['verified_reviews']])
+plt.figure(figsize=(20,15), facecolor='None')
+wordcloud = WordCloud(max_words=500, width=1600, height=800).generate(text)
+plt.imshow(wordcloud, interpolation='bilinear')
+plt.axis("off")
+plt.title('Most frequent words in positive reviews', fontsize=19)
+plt.show()
+
+neg_reviews= df[df.feedback==0]
+neg_reviews.head()
+
+text = ' '.join([word for word in neg_reviews['verified_reviews']])
+plt.figure(figsize=(20,15), facecolor='None')
+wordcloud = WordCloud(max_words=500, width=1600, height=800).generate(text)
+plt.imshow(wordcloud, interpolation='bilinear')
+plt.axis("off")
+plt.title('Most frequent words in negative reviews', fontsize=19)
+plt.show()
+
+from keras.models import Sequential
+from keras.preprocessing.text import Tokenizer
+from keras.layers import Dense, Embedding, LSTM, SpatialDropout1D
+
+tokenizer = Tokenizer(num_words=500, split=' ')
+tokenizer.fit_on_texts(df['verified_reviews'])
+X = tokenizer.texts_to_sequences(df['verified_reviews'])
+
+Y = df['feedback']
+
+x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.2, random_state=42)
+
+model = Sequential()
+model.add(SpatialDropout1D(0.4))
+model.add(LSTM(64))
+model.add(Dense(1, activation='sigmoid'))
+model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
+
+
+
+model = Sequential()
+model.add(LSTM(32))
+model.add(Dense(1, activation='sigmoid'))
+model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
